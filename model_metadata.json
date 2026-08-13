@@ -1,0 +1,93 @@
+{
+  "feature_cols": [
+    "rasio_angkut",
+    "rasio_diolah",
+    "rasio_sisa",
+    "indeks_jarak"
+  ],
+  "label_order": [
+    "AMAN",
+    "WASPADA",
+    "KRITIS"
+  ],
+  "wbi_weights": {
+    "rasio_sisa_norm": 0.3333333333333333,
+    "rasio_angkut_norm": 0.3333333333333333,
+    "indeks_jarak": 0.3333333333333333
+  },
+  "wbi_thresholds": {
+    "KRITIS": 0.6,
+    "WASPADA": 0.3
+  },
+  "cv_metrics": {
+    "cv_accuracy_mean": 0.9523809523809522,
+    "cv_accuracy_std": 0.03984095364447979,
+    "cv_f1_weighted_mean": 0.9527623647231491,
+    "cv_f1_weighted_std": 0.0387377439193051,
+    "cv_f1_macro_mean": 0.9445414679728407,
+    "cv_f1_macro_std": 0.06566296614310431,
+    "classification_report": {
+      "AMAN": {
+        "precision": 0.967479674796748,
+        "recall": 0.967479674796748,
+        "f1-score": 0.967479674796748,
+        "support": 123.0
+      },
+      "WASPADA": {
+        "precision": 0.9305555555555556,
+        "recall": 0.9305555555555556,
+        "f1-score": 0.9305555555555556,
+        "support": 72.0
+      },
+      "KRITIS": {
+        "precision": 0.9333333333333333,
+        "recall": 0.9333333333333333,
+        "f1-score": 0.9333333333333333,
+        "support": 15.0
+      },
+      "accuracy": 0.9523809523809523,
+      "macro avg": {
+        "precision": 0.9437895212285458,
+        "recall": 0.9437895212285458,
+        "f1-score": 0.9437895212285458,
+        "support": 210.0
+      },
+      "weighted avg": {
+        "precision": 0.9523809523809523,
+        "recall": 0.9523809523809523,
+        "f1-score": 0.9523809523809523,
+        "support": 210.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        119,
+        4,
+        0
+      ],
+      [
+        4,
+        67,
+        1
+      ],
+      [
+        0,
+        1,
+        14
+      ]
+    ],
+    "confusion_matrix_labels": [
+      "AMAN",
+      "WASPADA",
+      "KRITIS"
+    ]
+  },
+  "tree_depth": 6,
+  "tree_leaves": 13,
+  "feature_importance": {
+    "rasio_sisa": 0.5065164085705964,
+    "indeks_jarak": 0.27829350945934245,
+    "rasio_angkut": 0.2151900819700612,
+    "rasio_diolah": 0.0
+  }
+}

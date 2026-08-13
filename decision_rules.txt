@@ -1,0 +1,37 @@
+|--- rasio_sisa <= 0.45
+|   |--- rasio_angkut <= 0.85
+|   |   |--- indeks_jarak <= 0.53
+|   |   |   |--- class: AMAN
+|   |   |--- indeks_jarak >  0.53
+|   |   |   |--- indeks_jarak <= 0.64
+|   |   |   |   |--- rasio_sisa <= 0.04
+|   |   |   |   |   |--- indeks_jarak <= 0.59
+|   |   |   |   |   |   |--- class: WASPADA
+|   |   |   |   |   |--- indeks_jarak >  0.59
+|   |   |   |   |   |   |--- class: AMAN
+|   |   |   |   |--- rasio_sisa >  0.04
+|   |   |   |   |   |--- class: WASPADA
+|   |   |   |--- indeks_jarak >  0.64
+|   |   |   |   |--- class: WASPADA
+|   |--- rasio_angkut >  0.85
+|   |   |--- indeks_jarak <= 0.84
+|   |   |   |--- rasio_angkut <= 0.93
+|   |   |   |   |--- indeks_jarak <= 0.71
+|   |   |   |   |   |--- class: AMAN
+|   |   |   |   |--- indeks_jarak >  0.71
+|   |   |   |   |   |--- class: WASPADA
+|   |   |   |--- rasio_angkut >  0.93
+|   |   |   |   |--- class: AMAN
+|   |   |--- indeks_jarak >  0.84
+|   |   |   |--- rasio_angkut <= 0.93
+|   |   |   |   |--- class: WASPADA
+|   |   |   |--- rasio_angkut >  0.93
+|   |   |   |   |--- class: WASPADA
+|--- rasio_sisa >  0.45
+|   |--- indeks_jarak <= 0.63
+|   |   |--- rasio_sisa <= 0.69
+|   |   |   |--- class: WASPADA
+|   |   |--- rasio_sisa >  0.69
+|   |   |   |--- class: KRITIS
+|   |--- indeks_jarak >  0.63
+|   |   |--- class: KRITIS
