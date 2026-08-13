@@ -137,21 +137,21 @@ with col_left:
         with col1:
             rasio_angkut = st.number_input(
                 "Rasio Angkut", min_value=0.0, max_value=1.0, step=0.01,
-                value=saved_params["rasio_angkut"], key="angkut"
+                value=saved_params["rasio_angkut"], key=f"angkut_{selected_wilayah}"
             )
             rasio_diolah = st.number_input(
                 "Rasio Diolah", min_value=0.0, max_value=1.0, step=0.01,
-                value=saved_params["rasio_diolah"], key="diolah"
+                value=saved_params["rasio_diolah"], key=f"diolah_{selected_wilayah}"
             )
         
         with col2:
             rasio_sisa = st.number_input(
                 "Rasio Sisa", min_value=0.0, max_value=1.0, step=0.01,
-                value=saved_params["rasio_sisa"], key="sisa"
+                value=saved_params["rasio_sisa"], key=f"sisa_{selected_wilayah}"
             )
             indeks_jarak = st.number_input(
                 "Indeks Jarak", min_value=0.0, max_value=1.0, step=0.01,
-                value=saved_params["indeks_jarak"], key="jarak"
+                value=saved_params["indeks_jarak"], key=f"jarak_{selected_wilayah}"
             )
         
         # Tombol Klasifikasi
