@@ -218,11 +218,21 @@ with col_left:
                     st.progress(p, text=f"{c}: {p*100:.1f}%")
             
             st.write("**Ringkasan Input:**")
-            a, b, c, d = st.columns(4)
-            a.metric("Rasio Angkut", f"{res['params']['rasio_angkut']:.3f}")
-            b.metric("Rasio Diolah", f"{res['params']['rasio_diolah']:.3f}")
-            c.metric("Rasio Sisa", f"{res['params']['rasio_sisa']:.3f}")
-            d.metric("Indeks Jarak", f"{res['params']['indeks_jarak']:.3f}")
+            cols = st.columns(4)
+            values = [
+                ("Rasio Angkut", res["params"]["rasio_angkut"]),
+                ("Rasio Diolah", res["params"]["rasio_diolah"]),
+                ("Rasio Sisa", res["params"]["rasio_sisa"]),
+                ("Indeks Jarak", res["params"]["indeks_jarak"]),
+            ]
+            for col, (label, val) in zip(cols, values):
+                col.markdown(
+                    f"""<div style="background:#f5f5f5;border-radius:8px;padding:8px 10px;text-align:center;">
+                        <div style="font-size:12px;color:#555;">{label}</div>
+                        <div style="font-size:16px;font-weight:600;margin-top:2px;">{val:.3f}</div>
+                    </div>""",
+                    unsafe_allow_html=True,
+                )
             
             st.write("**Rekomendasi:**")
             params = res["params"]
