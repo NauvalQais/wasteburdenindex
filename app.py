@@ -207,16 +207,6 @@ with col_left:
             
             st.write(cfg['desc'])
             
-            if hasattr(model, "predict_proba"):
-                st.write("**Probabilitas:**")
-                fitur = np.array([[res["params"]["rasio_angkut"], res["params"]["rasio_diolah"], 
-                                   res["params"]["rasio_sisa"], res["params"]["indeks_jarak"]]])
-                proba = model.predict_proba(fitur)[0]
-                classes = [str(c).upper() for c in model.classes_]
-                
-                for c, p in sorted(zip(classes, proba), key=lambda x: -x[1]):
-                    st.progress(p, text=f"{c}: {p*100:.1f}%")
-            
             st.write("**Ringkasan Input:**")
             cols = st.columns(4)
             values = [
@@ -226,13 +216,7 @@ with col_left:
                 ("Indeks Jarak", res["params"]["indeks_jarak"]),
             ]
             for col, (label, val) in zip(cols, values):
-                col.markdown(
-                    f"""<div style="background:#f5f5f5;border-radius:8px;padding:8px 10px;text-align:center;">
-                        <div style="font-size:12px;color:#555;">{label}</div>
-                        <div style="font-size:16px;font-weight:600;margin-top:2px;">{val:.3f}</div>
-                    </div>""",
-                    unsafe_allow_html=True,
-                )
+                col.metric(label, f"{val:.3f}")
             
             st.write("**Rekomendasi:**")
             params = res["params"]
