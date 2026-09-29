@@ -13,73 +13,29 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    .hasil-judul {
-        font-size: 1.05rem;
-        font-weight: 700;
-        margin: 4px 0 8px 0;
+    [data-testid="stMetricValue"] {
+        font-size: 1rem;
+        color: #222;
     }
-    .hasil-box {
-        border: 1px solid #e6e6e6;
-        border-radius: 10px;
-        padding: 12px 14px;
-        background: #fbfbfb;
+    [data-testid="stMetricLabel"] {
+        font-size: 0.7rem;
+        color: #888;
+    }
+    [data-testid="stMetricDelta"] {
+        font-size: 0.7rem;
+    }
+    [data-testid="stMarkdownContainer"] h2 {
+        font-size: 1.1rem;
+    }
+    [data-testid="stMarkdownContainer"] h3 {
+        font-size: 0.95rem;
+    }
+    [data-testid="stMarkdownContainer"] h4 {
+        font-size: 0.9rem;
+    }
+    [data-testid="stMarkdownContainer"] p {
         font-size: 0.85rem;
     }
-    .hasil-status {
-        display: inline-block;
-        font-size: 0.95rem;
-        font-weight: 700;
-        letter-spacing: .3px;
-        padding: 5px 10px;
-        border-radius: 6px;
-    }
-    .hasil-desc {
-        font-size: 0.82rem;
-        color: #555;
-        margin-top: 6px;
-    }
-    .hasil-sub {
-        font-size: 0.82rem;
-        font-weight: 700;
-        color: #333;
-        margin-top: 12px;
-        margin-bottom: 5px;
-    }
-    .kartu-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-    }
-    .kartu {
-        flex: 1 1 90px;
-        min-width: 90px;
-        background: #fff;
-        border: 1px solid #eaeaea;
-        border-radius: 6px;
-        padding: 5px 8px;
-        text-align: center;
-    }
-    .kartu-label {
-        font-size: 0.65rem;
-        color: #888;
-        text-transform: uppercase;
-        letter-spacing: .2px;
-        white-space: nowrap;
-    }
-    .kartu-nilai {
-        font-size: 0.92rem;
-        font-weight: 700;
-        color: #222;
-        margin-top: 1px;
-    }
-    .hasil-rekom {
-        margin: 0;
-        padding-left: 18px;
-        font-size: 0.78rem;
-        color: #444;
-        line-height: 1.5;
-    }
-    .hasil-rekom li { margin-bottom: 2px; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -167,13 +123,6 @@ def balance_sisa(vol_input, angkut, diolah, sisa):
     if abs(sisa - sisa_calc) > 3:
         return sisa_calc, True
     return sisa, False
-
-def kartu_html(items):
-    return "".join(
-        '<div class="kartu"><div class="kartu-label">'
-        f"{nama}</div><div class=\"kartu-nilai\">{nilai}</div></div>"
-        for nama, nilai in items
-    )
 
 # Sidebar
 with st.sidebar:
@@ -280,15 +229,14 @@ with col_left:
         
         with st.expander("Fitur Turunan (dihitung otomatis)", expanded=False):
             fitur_values = [
-                ("Rasio Angkut", f"{fitur['rasio_angkut']:.3f}"),
-                ("Rasio Diolah", f"{fitur['rasio_diolah']:.3f}"),
-                ("Rasio Sisa", f"{fitur['rasio_sisa']:.3f}"),
-                ("Indeks Jarak", f"{fitur['indeks_jarak']:.3f}"),
+                ("Rasio Angkut", fitur["rasio_angkut"]),
+                ("Rasio Diolah", fitur["rasio_diolah"]),
+                ("Rasio Sisa", fitur["rasio_sisa"]),
+                ("Indeks Jarak", fitur["indeks_jarak"]),
             ]
-            st.markdown(
-                f'<div class="kartu-grid">{kartu_html(fitur_values)}</div>',
-                unsafe_allow_html=True,
-            )
+            fitur_cols = st.columns(4)
+            for fcol, (flabel, fval) in zip(fitur_cols, fitur_values):
+                fcol.metric(flabel, f"{fval:.3f}")
             st.caption(
                 f"Indeks Jarak = TOTAL_JARAK_BULAT / {int(MAX_TOTAL_JARAK_BULAT)} "
                 "(maksimum data latih); boleh > 1.0 bila jarak melebihi data latih."
@@ -346,63 +294,61 @@ with col_left:
             fitur_res = res["fitur"]
             
             st.markdown("---")
-            st.markdown(
-                '<div class="hasil-judul">Hasil Klasifikasi</div>',
-                unsafe_allow_html=True,
-            )
+            st.markdown("#### Hasil Klasifikasi")
+
+            if label == "KRITIS":
+                st.error(f"**STATUS: {label}**")
+            elif label == "WASPADA":
+                st.warning(f"**STATUS: {label}**")
+            else:
+                st.success(f"**STATUS: {label}**")
+
+            st.write(cfg["desc"])
 
             if res.get("sisa_dikoreksi"):
                 st.info(
-                    f"Nilai SISA dikoreksi dari {res['sisa_awal']:.2f} m³ "
-                    f"menjadi {params['sisa']:.2f} m³."
+                    f"Nilai SISA dikoreksi dari {res['sisa_awal']:.2f} m\u00b3 "
+                    f"menjadi {params['sisa']:.2f} m\u00b3."
                 )
 
             rekomendasi = []
             if fitur_res["rasio_sisa"] > 0.3:
-                rekomendasi.append("Rasio sisa tinggi — tambah frekuensi pengangkutan")
+                rekomendasi.append("Rasio sisa tinggi \u2014 tambah frekuensi pengangkutan")
             if fitur_res["rasio_angkut"] < 0.7:
-                rekomendasi.append("Rasio angkut rendah — evaluasi armada")
+                rekomendasi.append("Rasio angkut rendah \u2014 evaluasi armada")
             if fitur_res["rasio_diolah"] < 0.4:
-                rekomendasi.append("Rasio diolah rendah — tingkatkan kapasitas pengolahan")
+                rekomendasi.append("Rasio diolah rendah \u2014 tingkatkan kapasitas pengolahan")
             if fitur_res["indeks_jarak"] > 0.7:
-                rekomendasi.append("Jarak ke TPA jauh — optimasi rute")
+                rekomendasi.append("Jarak ke TPA jauh \u2014 optimasi rute")
             if not rekomendasi:
                 rekomendasi.append("Semua indikator dalam kondisi baik")
 
-            input_items = [
-                ("INPUT (m³)", f"{params['input']:.2f}"),
-                ("ANGKUT (m³)", f"{params['angkut']:.2f}"),
-                ("DIOLAH (m³)", f"{params['diolah']:.2f}"),
-                ("SISA (m³)", f"{params['sisa']:.2f}"),
-                ("Jarak (km)", f"{params['jarak_bulat']:.2f}"),
+            st.markdown("**Ringkasan Input Mentah:**")
+            raw_cols = st.columns(5)
+            raw_values = [
+                ("INPUT (m\u00b3)", params["input"]),
+                ("ANGKUT (m\u00b3)", params["angkut"]),
+                ("DIOLAH (m\u00b3)", params["diolah"]),
+                ("SISA (m\u00b3)", params["sisa"]),
+                ("Jarak (km)", params["jarak_bulat"]),
             ]
-            fitur_html_items = [
-                ("Rasio Angkut", f"{fitur_res['rasio_angkut']:.3f}"),
-                ("Rasio Diolah", f"{fitur_res['rasio_diolah']:.3f}"),
-                ("Rasio Sisa", f"{fitur_res['rasio_sisa']:.3f}"),
-                ("Indeks Jarak", f"{fitur_res['indeks_jarak']:.3f}"),
+            for rcol, (rlab, rval) in zip(raw_cols, raw_values):
+                rcol.metric(rlab, f"{rval:.2f}")
+
+            st.markdown("**Fitur Model:**")
+            fit_cols = st.columns(4)
+            fit_values = [
+                ("Rasio Angkut", fitur_res["rasio_angkut"]),
+                ("Rasio Diolah", fitur_res["rasio_diolah"]),
+                ("Rasio Sisa", fitur_res["rasio_sisa"]),
+                ("Indeks Jarak", fitur_res["indeks_jarak"]),
             ]
-            list_rekom = "".join(f"<li>{r}</li>" for r in rekomendasi)
+            for fcol, (flab, fval) in zip(fit_cols, fit_values):
+                fcol.metric(flab, f"{fval:.3f}")
 
-            html = f"""
-            <div class="hasil-box">
-                <div class="hasil-status" style="background:{cfg['color']}22;
-                     border-left:4px solid {cfg['color']}; color:{cfg['color']};">
-                    STATUS: {label}
-                </div>
-                <div class="hasil-desc">{cfg['desc']}</div>
-
-                <div class="hasil-sub">Ringkasan Input Mentah</div>
-                <div class="kartu-grid">{kartu_html(input_items)}</div>
-
-                <div class="hasil-sub">Fitur Model</div>
-                <div class="kartu-grid">{kartu_html(fitur_html_items)}</div>
-
-                <div class="hasil-sub">Rekomendasi</div>
-                <ul class="hasil-rekom">{list_rekom}</ul>
-            </div>
-            """
-            st.markdown(html, unsafe_allow_html=True)
+            st.markdown("**Rekomendasi:**")
+            for r in rekomendasi:
+                st.write(f"- {r}")
 
 # ==================== KOLOM KANAN (PETA) ====================
 with col_right:
