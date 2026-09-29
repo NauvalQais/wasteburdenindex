@@ -66,12 +66,32 @@ LABEL_CONFIG = {
     },
 }
 
+# Nilai maksimum TOTAL_JARAK_BULAT pada data latih (km)
+MAX_TOTAL_JARAK_BULAT = 91.0
+
 DEFAULT_PARAMS = {
-    "rasio_angkut": 0.75,
-    "rasio_diolah": 0.50,
-    "rasio_sisa": 0.25,
-    "indeks_jarak": 0.40
+    "input": 7.0,
+    "angkut": 6.0,
+    "diolah": 0.0,
+    "sisa": 1.0,
+    "jarak_bulat": 63.0
 }
+
+def derive_features(vol_input, angkut, diolah, sisa, jarak_bulat):
+    """Konversi input mentah -> 4 fitur yang dipakai model."""
+    return {
+        "rasio_angkut": float(angkut / vol_input) if vol_input else 0.0,
+        "rasio_diolah": float(diolah / angkut) if angkut else 0.0,
+        "rasio_sisa": float(sisa / vol_input) if vol_input else 0.0,
+        "indeks_jarak": float(jarak_bulat / MAX_TOTAL_JARAK_BULAT),
+    }
+
+def balance_sisa(vol_input, angkut, diolah, sisa):
+    """Koreksi SISA mengikuti pipeline training (selisih neraca > 3 m3)."""
+    sisa_calc = max(vol_input - angkut - diolah, 0.0)
+    if abs(sisa - sisa_calc) > 3:
+        return sisa_calc, True
+    return sisa, False
 
 # Sidebar
 with st.sidebar:
@@ -118,82 +138,129 @@ wilayah_names = [w['nama'] for w in wilayah_list if w['nama']]
 with col_left:
     with st.expander("Panduan Pengisian Fitur", expanded=False):
         st.markdown("""
-        | Fitur | Keterangan | Rentang |
+        | Fitur | Keterangan | Satuan |
         |---|---|---|
-        | **Rasio Angkut** | Proporsi sampah yang berhasil diangkut | 0.0 – 1.0 |
-        | **Rasio Diolah** | Proporsi sampah yang berhasil diolah | 0.0 – 1.0 |
-        | **Rasio Sisa** | Proporsi sampah yang tersisa | 0.0 – 1.0 |
-        | **Indeks Jarak** | Indeks jarak tempuh TPS ke TPA | 0.0 – 1.0 |
-        """)
+        | **INPUT** | Volume sampah masuk | m³ |
+        | **ANGKUT** | Volume sampah yang berhasil diangkut | m³ |
+        | **DIOLAH** | Volume sampah yang berhasil diolah | m³ |
+        | **SISA** | Volume sampah tersisa (dikoreksi otomatis bila neraca selisih > 3 m³) | m³ |
+        | **TOTAL_JARAK_BULAT** | Jarak bulat rute TPS ke TPA | km |
+
+        Fitur model dihitung otomatis dari input mentah:
+        `rasio_angkut = ANGKUT/INPUT`, `rasio_diolah = DIOLAH/ANGKUT`,
+        `rasio_sisa = SISA/INPUT`, `indeks_jarak = TOTAL_JARAK_BULAT/{max_jarak}`.
+        """.format(max_jarak=int(MAX_TOTAL_JARAK_BULAT)))
     
     if wilayah_names:
         selected_wilayah = st.selectbox("Pilih Wilayah:", wilayah_names)
         
         saved_params = st.session_state.wilayah_params.get(selected_wilayah, DEFAULT_PARAMS.copy())
         
-        st.markdown("### Input Data")
+        st.markdown("### Input Data Mentah")
         col1, col2 = st.columns(2)
         
         with col1:
-            rasio_angkut = st.number_input(
-                "Rasio Angkut", min_value=0.0, max_value=1.0, step=0.01,
-                value=saved_params["rasio_angkut"], key=f"angkut_{selected_wilayah}"
+            vol_input = st.number_input(
+                "INPUT (m³)", min_value=0.0, step=0.5,
+                value=saved_params["input"], key=f"input_{selected_wilayah}"
             )
-            rasio_diolah = st.number_input(
-                "Rasio Diolah", min_value=0.0, max_value=1.0, step=0.01,
-                value=saved_params["rasio_diolah"], key=f"diolah_{selected_wilayah}"
+            angkut = st.number_input(
+                "ANGKUT (m³)", min_value=0.0, step=0.5,
+                value=saved_params["angkut"], key=f"angkut_{selected_wilayah}"
+            )
+            diolah = st.number_input(
+                "DIOLAH (m³)", min_value=0.0, step=0.5,
+                value=saved_params["diolah"], key=f"diolah_{selected_wilayah}"
             )
         
         with col2:
-            rasio_sisa = st.number_input(
-                "Rasio Sisa", min_value=0.0, max_value=1.0, step=0.01,
-                value=saved_params["rasio_sisa"], key=f"sisa_{selected_wilayah}"
+            sisa_input = st.number_input(
+                "SISA (m³)", min_value=0.0, step=0.5,
+                value=saved_params["sisa"], key=f"sisa_{selected_wilayah}"
             )
-            indeks_jarak = st.number_input(
-                "Indeks Jarak", min_value=0.0, max_value=1.0, step=0.01,
-                value=saved_params["indeks_jarak"], key=f"jarak_{selected_wilayah}"
+            jarak_bulat = st.number_input(
+                "TOTAL_JARAK_BULAT (km)", min_value=0.0, step=1.0,
+                value=saved_params["jarak_bulat"], key=f"jarak_{selected_wilayah}"
+            )
+        
+        sisa_eff, dikoreksi = balance_sisa(vol_input, angkut, diolah, sisa_input)
+        sisa_calc = max(vol_input - angkut - diolah, 0.0)
+        
+        if vol_input <= 0:
+            st.warning("INPUT harus lebih dari 0 agar rasio dapat dihitung.")
+        elif dikoreksi:
+            st.info(
+                f"Neraca tidak seimbang (selisih {abs(sisa_input - sisa_calc):.2f} m³) — "
+                f"SISA dikoreksi otomatis menjadi {sisa_eff:.2f} m³."
+            )
+        
+        fitur = derive_features(vol_input, angkut, diolah, sisa_eff, jarak_bulat)
+        
+        with st.expander("Fitur Turunan (dihitung otomatis)", expanded=False):
+            fitur_cols = st.columns(4)
+            fitur_values = [
+                ("Rasio Angkut", fitur["rasio_angkut"]),
+                ("Rasio Diolah", fitur["rasio_diolah"]),
+                ("Rasio Sisa", fitur["rasio_sisa"]),
+                ("Indeks Jarak", fitur["indeks_jarak"]),
+            ]
+            for fcol, (flabel, fval) in zip(fitur_cols, fitur_values):
+                fcol.metric(flabel, f"{fval:.3f}")
+            st.caption(
+                f"Indeks Jarak = TOTAL_JARAK_BULAT / {int(MAX_TOTAL_JARAK_BULAT)} "
+                "(maksimum data latih); boleh > 1.0 bila jarak melebihi data latih."
             )
         
         # Tombol Klasifikasi
         if st.button("Klasifikasi dan Prediksi", type="primary", use_container_width=True):
-            fitur = np.array([[rasio_angkut, rasio_diolah, rasio_sisa, indeks_jarak]])
-            
-            try:
-                prediksi = model.predict(fitur)[0]
-                label = str(prediksi).strip().upper()
-                
-                if label not in LABEL_CONFIG:
-                    label = "WASPADA"
-                
-                st.session_state.wilayah_status[selected_wilayah] = label
-                st.session_state.wilayah_params[selected_wilayah] = {
-                    "rasio_angkut": rasio_angkut,
-                    "rasio_diolah": rasio_diolah,
-                    "rasio_sisa": rasio_sisa,
-                    "indeks_jarak": indeks_jarak
-                }
-                
-                st.session_state.prediction_result = {
-                    "label": label,
-                    "cfg": LABEL_CONFIG[label],
-                    "params": {
-                        "rasio_angkut": rasio_angkut,
-                        "rasio_diolah": rasio_diolah,
-                        "rasio_sisa": rasio_sisa,
-                        "indeks_jarak": indeks_jarak
+            if vol_input <= 0:
+                st.error("INPUT harus lebih dari 0.")
+            else:
+                try:
+                    X = np.array([[
+                        fitur["rasio_angkut"],
+                        fitur["rasio_diolah"],
+                        fitur["rasio_sisa"],
+                        fitur["indeks_jarak"],
+                    ]])
+                    prediksi = model.predict(X)[0]
+                    label = str(prediksi).strip().upper()
+                    
+                    if label not in LABEL_CONFIG:
+                        label = "WASPADA"
+                    
+                    params_raw = {
+                        "input": vol_input,
+                        "angkut": angkut,
+                        "diolah": diolah,
+                        "sisa": sisa_eff,
+                        "jarak_bulat": jarak_bulat,
                     }
-                }
-                st.session_state.show_prediction = True
-                st.rerun()
-                
-            except Exception as e:
-                st.error(f"Error: {e}")
+                    
+                    st.session_state.wilayah_status[selected_wilayah] = label
+                    st.session_state.wilayah_params[selected_wilayah] = params_raw
+                    
+                    st.session_state.prediction_result = {
+                        "label": label,
+                        "cfg": LABEL_CONFIG[label],
+                        "params": params_raw,
+                        "fitur": fitur,
+                        "sisa_awal": sisa_input,
+                        "sisa_dikoreksi": dikoreksi,
+                    }
+                    st.session_state.show_prediction = True
+                    st.rerun()
+                    
+                except Exception as e:
+                    st.error(f"Error: {e}")
         
         # TAMPILAN HASIL KLASIFIKASI
         if st.session_state.show_prediction and st.session_state.prediction_result:
             res = st.session_state.prediction_result
             label = res["label"]
             cfg = res["cfg"]
+            params = res["params"]
+            fitur_res = res["fitur"]
             
             st.markdown("---")
             st.markdown("### Hasil Klasifikasi")
@@ -207,27 +274,41 @@ with col_left:
             
             st.write(cfg['desc'])
             
-            st.write("**Ringkasan Input:**")
-            cols = st.columns(4)
+            if res.get("sisa_dikoreksi"):
+                st.info(f"Nilai SISA dikoreksi dari {res['sisa_awal']:.2f} m³ menjadi {params['sisa']:.2f} m³.")
+            
+            st.write("**Ringkasan Input Mentah:**")
+            cols = st.columns(5)
             values = [
-                ("Rasio Angkut", res["params"]["rasio_angkut"]),
-                ("Rasio Diolah", res["params"]["rasio_diolah"]),
-                ("Rasio Sisa", res["params"]["rasio_sisa"]),
-                ("Indeks Jarak", res["params"]["indeks_jarak"]),
+                ("INPUT (m³)", params["input"]),
+                ("ANGKUT (m³)", params["angkut"]),
+                ("DIOLAH (m³)", params["diolah"]),
+                ("SISA (m³)", params["sisa"]),
+                ("Jarak (km)", params["jarak_bulat"]),
             ]
-            for col, (label, val) in zip(cols, values):
-                col.metric(label, f"{val:.3f}")
+            for col, (met_label, val) in zip(cols, values):
+                col.metric(met_label, f"{val:.2f}")
+            
+            st.write("**Fitur Model:**")
+            cols = st.columns(4)
+            fitur_items = [
+                ("Rasio Angkut", fitur_res["rasio_angkut"]),
+                ("Rasio Diolah", fitur_res["rasio_diolah"]),
+                ("Rasio Sisa", fitur_res["rasio_sisa"]),
+                ("Indeks Jarak", fitur_res["indeks_jarak"]),
+            ]
+            for col, (met_label, val) in zip(cols, fitur_items):
+                col.metric(met_label, f"{val:.3f}")
             
             st.write("**Rekomendasi:**")
-            params = res["params"]
             rekomendasi = []
-            if params["rasio_sisa"] > 0.3:
+            if fitur_res["rasio_sisa"] > 0.3:
                 rekomendasi.append("Rasio sisa tinggi — tambah frekuensi pengangkutan")
-            if params["rasio_angkut"] < 0.7:
+            if fitur_res["rasio_angkut"] < 0.7:
                 rekomendasi.append("Rasio angkut rendah — evaluasi armada")
-            if params["rasio_diolah"] < 0.4:
+            if fitur_res["rasio_diolah"] < 0.4:
                 rekomendasi.append("Rasio diolah rendah — tingkatkan kapasitas pengolahan")
-            if params["indeks_jarak"] > 0.7:
+            if fitur_res["indeks_jarak"] > 0.7:
                 rekomendasi.append("Jarak ke TPA jauh — optimasi rute")
             if not rekomendasi:
                 rekomendasi.append("Semua indikator dalam kondisi baik")
@@ -271,15 +352,36 @@ with col_right:
             params = st.session_state.wilayah_params.get(wilayah_name, {})
             status_text = st.session_state.wilayah_status.get(wilayah_name, 'Belum diprediksi')
             
+            if params:
+                f = derive_features(
+                    params["input"], params["angkut"], params["diolah"],
+                    params["sisa"], params["jarak_bulat"]
+                )
+                raw_html = (
+                    f"INPUT: {params['input']:.2f} m³<br>"
+                    f"ANGKUT: {params['angkut']:.2f} m³<br>"
+                    f"DIOLAH: {params['diolah']:.2f} m³<br>"
+                    f"SISA: {params['sisa']:.2f} m³<br>"
+                    f"Jarak: {params['jarak_bulat']:.0f} km"
+                )
+                fitur_html = (
+                    f"Rasio Angkut: {f['rasio_angkut']:.3f}<br>"
+                    f"Rasio Diolah: {f['rasio_diolah']:.3f}<br>"
+                    f"Rasio Sisa: {f['rasio_sisa']:.3f}<br>"
+                    f"Indeks Jarak: {f['indeks_jarak']:.3f}"
+                )
+            else:
+                raw_html = "Input mentah belum diisi"
+                fitur_html = "-"
+            
             popup_html = f"""
-            <div style="min-width: 180px;">
+            <div style="min-width: 200px;">
                 <b>{wilayah_name}</b><br>
                 Status: {status_text}<br>
                 <hr>
-                Rasio Angkut: {params.get('rasio_angkut', '-')}<br>
-                Rasio Diolah: {params.get('rasio_diolah', '-')}<br>
-                Rasio Sisa: {params.get('rasio_sisa', '-')}<br>
-                Indeks Jarak: {params.get('indeks_jarak', '-')}
+                {raw_html}
+                <hr>
+                {fitur_html}
             </div>
             """
             
