@@ -97,6 +97,17 @@ LABEL_CONFIG = {
     },
 }
 
+# Output model bisa berupa label Inggris (SAFE/ALERT/CRITICAL) atau
+# Indonesia (AMAN/WASPADA/KRITIS) -> dipetakan ke label tampilan app
+LABEL_MAP = {
+    "SAFE": "AMAN",
+    "ALERT": "WASPADA",
+    "CRITICAL": "KRITIS",
+    "AMAN": "AMAN",
+    "WASPADA": "WASPADA",
+    "KRITIS": "KRITIS",
+}
+
 # Nilai maksimum TOTAL_JARAK_BULAT pada data latih (km)
 MAX_TOTAL_JARAK_BULAT = 91.0
 
@@ -112,7 +123,7 @@ def derive_features(vol_input, angkut, diolah, sisa, jarak_bulat):
     """Konversi input mentah -> 4 fitur yang dipakai model."""
     return {
         "rasio_angkut": float(angkut / vol_input) if vol_input else 0.0,
-        "rasio_diolah": float(diolah / angkut) if angkut else 0.0,
+        "rasio_diolah": float(diolah / vol_input) if vol_input else 0.0,
         "rasio_sisa": float(sisa / vol_input) if vol_input else 0.0,
         "indeks_jarak": float(jarak_bulat / MAX_TOTAL_JARAK_BULAT),
     }
@@ -178,7 +189,7 @@ with col_left:
         | **TOTAL_JARAK_BULAT** | Jarak bulat rute TPS ke TPA | km |
 
         Fitur model dihitung otomatis dari input mentah:
-        `rasio_angkut = ANGKUT/INPUT`, `rasio_diolah = DIOLAH/ANGKUT`,
+        `rasio_angkut = ANGKUT/INPUT`, `rasio_diolah = DIOLAH/INPUT`,
         `rasio_sisa = SISA/INPUT`, `indeks_jarak = TOTAL_JARAK_BULAT/{max_jarak}`.
         """.format(max_jarak=int(MAX_TOTAL_JARAK_BULAT)))
     
@@ -255,7 +266,7 @@ with col_left:
                         fitur["indeks_jarak"],
                     ]])
                     prediksi = model.predict(X)[0]
-                    label = str(prediksi).strip().upper()
+                    label = LABEL_MAP.get(str(prediksi).strip().upper())
                     
                     if label not in LABEL_CONFIG:
                         label = "WASPADA"
